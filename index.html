@@ -54,9 +54,10 @@
       try {
         const res = await fetch(scriptURL, {
           method: "POST",
+          mode: "cors",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(formData)
-        });
+          });
         const data = await res.json();
         spinner.style.display = "none";
 
@@ -76,4 +77,5 @@
   </script>
 </body>
 </html>
+
 
