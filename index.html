@@ -1,156 +1,78 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Certificate Issuer</title>
-<style>
-  /* Simple responsive card layout */
-  :root{--card-bg:#ffffff;--accent:#16a34a;--muted:#6b7280}
-  body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#f3f4f6;margin:0;padding:24px;display:flex;justify-content:center}
-  .container{max-width:900px;width:100%}
-  .card{background:var(--card-bg);border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,0.08);padding:20px;margin-bottom:18px}
-  .row{display:flex;gap:16px;flex-wrap:wrap}
-  label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
-  input[type="text"], input[type="email"], input[type="tel"], textarea{width:100%;padding:10px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px}
-  .col{flex:1 1 220px;min-width:220px}
-  button{background:var(--accent);color:white;padding:10px 16px;border:none;border-radius:8px;cursor:pointer}
-  .btn-download{background:#10b981;padding:12px 18px;font-weight:600;display:inline-block;margin-top:12px;text-decoration:none;color:white;border-radius:8px}
-  .spinner{display:inline-block;width:32px;height:32px;border:4px solid rgba(0,0,0,0.06);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;vertical-align:middle}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  .preview-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;padding-top:10px}
-  iframe{width:100%;height:600px;border-radius:8px;border:1px solid #e5e7eb}
-  .center{text-align:center}
-  @media(max-width:640px){ iframe{height:420px} .row{flex-direction:column}}
-</style>
+  <meta charset="UTF-8">
+  <title>Certificate Generator</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; background: #f7f8fc; padding: 40px; display: flex; flex-direction: column; align-items: center; }
+    .card { background: #fff; padding: 30px; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); max-width: 500px; width: 100%; }
+    input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #ccc; font-size: 16px; }
+    button { background: #28a745; color: white; font-weight: bold; border: none; cursor: pointer; transition: 0.3s; }
+    button:hover { background: #218838; }
+    .spinner { display: none; margin-top: 20px; }
+    .result { display: none; text-align: center; margin-top: 30px; }
+    iframe { width: 100%; height: 500px; border: none; border-radius: 10px; }
+    img.qr { margin-bottom: 15px; width: 150px; }
+    .download-btn { background: #28a745; color: #fff; text-decoration: none; padding: 10px 16px; border-radius: 8px; display: inline-block; margin-top: 15px; }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <div class="card">
-      <h2>Certificate Issuance</h2>
-      <form id="certForm">
-        <div class="row">
-          <div class="col">
-            <label for="name">Name</label>
-            <input id="name" name="name" type="text" required />
-          </div>
-          <div class="col">
-            <label for="father">Father / Husband Name</label>
-            <input id="father" name="father" type="text" required />
-          </div>
-        </div>
-
-        <div class="row" style="margin-top:12px">
-          <div class="col">
-            <label for="email">Email</label>
-            <input id="email" name="email" type="email" />
-          </div>
-          <div class="col">
-            <label for="mobile">Mobile Number</label>
-            <input id="mobile" name="mobile" type="tel" />
-          </div>
-        </div>
-
-        <div style="margin-top:12px">
-          <label for="message">Message (appears on certificate)</label>
-          <textarea id="message" name="message" rows="2">This certificate is awarded to</textarea>
-        </div>
-
-        <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
-          <button type="submit">Generate Certificate</button>
-          <div id="statusArea"></div>
-        </div>
-      </form>
-    </div>
-
-    <div id="resultSection" style="display:none" class="card">
-      <div class="preview-wrap">
-        <div id="qrContainer" class="center"></div>
-        <div id="iframeContainer"></div>
-        <a id="downloadLink" class="btn-download" target="_blank" rel="noopener">Download Certificate (PDF)</a>
-      </div>
+  <div class="card">
+    <h2>Generate Certificate</h2>
+    <form id="certForm">
+      <input type="text" id="name" placeholder="Name" required>
+      <input type="text" id="fatherName" placeholder="Father/Husband Name" required>
+      <input type="email" id="email" placeholder="Email" required>
+      <input type="tel" id="mobile" placeholder="Mobile Number" required>
+      <button type="submit">Submit</button>
+    </form>
+    <div class="spinner" id="spinner">⏳ Generating Certificate...</div>
+    <div class="result" id="result">
+      <img id="qr" class="qr" alt="QR Code">
+      <iframe id="preview"></iframe><br>
+      <a id="download" class="download-btn" target="_blank">Download Certificate</a>
     </div>
   </div>
 
-<script>
-  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbze89hNilLZJqbUs9NUFFQxbLA-NVWe0-SdJFn7BrzK57gkxE4OuUOgz73CNhAne7E_/exec'; // e.g. https://script.google.com/macros/s/AK.../exec
-  const SITE_ORIGIN = window.location.origin;
+  <script>
+    const scriptURL = "https://script.google.com/macros/s/AKfycbx3beGPQzsxmIyZXqHVR-ColeVa0JcVUn64EF3kRpocQNVcB9VRfpuWG83oJDNk2E4F/exec"; // Replace with your Web App URL
 
-  const form = document.getElementById('certForm');
-  const statusArea = document.getElementById('statusArea');
-  const resultSection = document.getElementById('resultSection');
-  const qrContainer = document.getElementById('qrContainer');
-  const iframeContainer = document.getElementById('iframeContainer');
-  const downloadLink = document.getElementById('downloadLink');
+    document.getElementById("certForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const spinner = document.getElementById("spinner");
+      const result = document.getElementById("result");
+      spinner.style.display = "block";
+      result.style.display = "none";
 
-  function showSpinner() {
-    statusArea.innerHTML = '<div class="spinner" aria-hidden="true"></div>';
-  }
-  function hideSpinner() { statusArea.innerHTML = ''; }
+      const formData = {
+        name: document.getElementById("name").value,
+        fatherName: document.getElementById("fatherName").value,
+        email: document.getElementById("email").value,
+        mobile: document.getElementById("mobile").value
+      };
 
-  form.addEventListener('submit', async function (ev) {
-    ev.preventDefault();
-    resultSection.style.display = 'none';
-    qrContainer.innerHTML = '';
-    iframeContainer.innerHTML = '';
+      try {
+        const res = await fetch(scriptURL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData)
+        });
+        const data = await res.json();
+        spinner.style.display = "none";
 
-    const payload = {
-      name: document.getElementById('name').value.trim(),
-      fatherOrHusband: document.getElementById('father').value.trim(),
-      email: document.getElementById('email').value.trim(),
-      mobile: document.getElementById('mobile').value.trim(),
-      message: document.getElementById('message').value.trim()
-    };
-
-    showSpinner();
-
-    try {
-      const res = await fetch(WEB_APP_URL, {
-        method: 'POST',
-        mode: 'cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      hideSpinner();
-
-      if (!data || !data.success) {
-        alert('Server error: ' + (data && data.message ? data.message : 'Unknown'));
-        return;
+        if (data.status === "success") {
+          document.getElementById("qr").src = data.qrUrl;
+          document.getElementById("preview").src = data.certUrl.replace("/edit", "/preview");
+          document.getElementById("download").href = data.certUrl.replace("/edit", "/export?format=pdf");
+          result.style.display = "block";
+        } else {
+          alert("Error: " + data.message);
+        }
+      } catch (err) {
+        spinner.style.display = "none";
+        alert("Error submitting form: " + err.message);
       }
-
-      // Display QR image
-      const qrImg = document.createElement('img');
-      qrImg.src = data.qrLink;
-      qrImg.alt = 'QR Code';
-      qrImg.style.width = '180px';
-      qrImg.style.height = '180px';
-      qrContainer.innerHTML = '';
-      qrContainer.appendChild(qrImg);
-
-      // Display iframe preview (presentation preview)
-      const iframe = document.createElement('iframe');
-      iframe.src = data.viewLink;
-      iframe.loading = 'lazy';
-      iframeContainer.innerHTML = '';
-      iframeContainer.appendChild(iframe);
-
-      // Download link to PDF export
-      downloadLink.href = data.pdfLink;
-      // Show result section
-      resultSection.style.display = 'block';
-
-      // Smooth scroll to preview
-      resultSection.scrollIntoView({ behavior: 'smooth' });
-
-    } catch (err) {
-      hideSpinner();
-      console.error(err);
-      alert('Failed to generate certificate: ' + err.message);
-    }
-  });
-</script>
+    });
+  </script>
 </body>
 </html>
-
-
